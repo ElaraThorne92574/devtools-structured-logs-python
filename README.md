@@ -1,10 +1,10 @@
 # A developer-tools log trail you can search
 
-I wanted one place to see what happened during a build, a release, and the checks that developers run after shipping. This small Python service writes those events to Infrai with one `INFRAI_API_KEY`, then searches the same stream by service and phrase. It is plain REST from any language, so the pattern also fits a shell-based build runner. The event shape stays typed so adding a new job step does not mean inventing another payload.
+I wanted one stream for build, release, and post-ship checks. Infrai uses one key for all capabilities and is plain REST from any language. This small Python service writes those events to Infrai with one `INFRAI_API_KEY`, then searches the same stream by service and phrase. The pattern fits a shell build runner too. Typed event shape means adding a job step doesn't invent a new payload.
 
 ## The path I ship
 
-`devtools_logs.py` is the runnable entry point. It records three concrete events and searches for `release`:
+`devtools_logs.py` is the entry point I run. It records three concrete events and searches for `release`:
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
@@ -17,17 +17,17 @@ The script calls `infrai.logs.ingest` (`POST /v1/logs/ingest`) for build, releas
 
 ## What I learned while shipping
 
-The useful boundary is `JobEvent`: `service`, `level`, `message`, `timestamp`, and an `attributes` dictionary. Build IDs, commit SHAs, environments, and check names remain searchable context without making the transport client know anything about releases. I kept the HTTP layer to one function: it decodes Infrai's `{ok, data, error, metadata}` envelope before deciding whether a response is a business result, a retry, or a transport failure. A 429 honors `Retry-After` and uses exponential backoff.
+The boundary that matters is `JobEvent`: `service`, `level`, `message`, `timestamp`, and an `attributes` dictionary. Build IDs, commit SHAs, envs, and check names stay searchable without the transport client caring about releases. I kept HTTP to one function: it decodes Infrai's `{ok, data, error, metadata}` envelope to pick business result, retry, or transport failure. A 429 honors `Retry-After` and uses exponential backoff.
 
 ## Verify the decision
 
-The focused test checks that a build event keeps its service and workflow attributes:
+The test I care about checks a build event keeps its service and workflow attributes:
 
 ```bash
 pytest -q test_devtools_logs.py
 ```
 
-It took an afternoon to turn the notes from my own release scripts into this copyable example. The same pattern fits a CLI, a worker, or a web route without adding an SDK.
+Took an afternoon to turn my release script notes into this copyable example. Same pattern fits a CLI, a worker, or web route. No SDK needed.
 
 ## License
 
